@@ -1297,11 +1297,11 @@ def build_cli_parser():
         epilog='''Please file bugs at...''',
     )
     parser.add_argument('file', help='the data file to operate on (.raw|.json)')
-    parser.add_argument('-spm', '--starting-point-mapping', help='a grg starting point mapping to be use as a basis for the matpower case', default='starting_points')
-    parser.add_argument('-sam', '--switch-assignment-mapping', help='a grg switch mapping to be use as a basis for the matpower case', default='breakers_assignment')
-    parser.add_argument('-i', '--idempotent', help='tests the translation of a given matpower file is idempotent', action='store_true')
-    parser.add_argument('-os', '--omit-subtypes', help='ommits optional component subtypes when translating from matpower to grg', default=False, action='store_true')
-    parser.add_argument('-sv', '--skip-validation', help='skips the grg validation step when translating from matpower to grg', default=False, action='store_true')
+    parser.add_argument('-spm', '--starting-point-mapping', help='a grg starting point mapping to be use as a basis for the psse case', default='starting_points')
+    parser.add_argument('-sam', '--switch-assignment-mapping', help='a grg switch mapping to be use as a basis for the psse case', default='breakers_assignment')
+    parser.add_argument('-i', '--idempotent', help='tests the translation of a given psse file is idempotent', action='store_true')
+    parser.add_argument('-os', '--omit-subtypes', help='ommits optional component subtypes when translating from psse to grg', default=False, action='store_true')
+    parser.add_argument('-sv', '--skip-validation', help='skips the grg validation step when translating from psse to grg', default=False, action='store_true')
 
     #parser.add_argument('--foo', help='foo help')
     version = __import__('grg_psse2grg').__version__
