@@ -55,6 +55,22 @@ import grg_grgdata.common as grg_common
 
 print_err = functools.partial(print, file=sys.stderr)
 
+def parse_grg_case_file(grg_file_name):
+    '''opens the given path and parses it as json data
+
+    Args:
+        grg_file_name(str): path to the a json data file
+    Returns:
+        Dict: a dictionary case
+    '''
+
+    # TODO validate format via grg_grgdata library!
+    with open(grg_file_name, 'r') as grg_data:
+        data = json.load(grg_data)
+        grg_data.close()
+
+    return data
+
 def parse_psse_case_file(psse_file_name):
     '''opens the given path and parses it as pss/e data
 
@@ -1188,7 +1204,7 @@ def build_psse_case(grg_data, starting_point_map_id, switch_assignment_map_id):
         'nxfrat': network.get('nxfrat', 0),
         'basfrq': network.get('basfrq', 60.0),
         'record1': record1,
-        'record2': record1,
+        'record2': record2,
         'buses': psse_buses,
         'loads': psse_loads,
         'fixed_shunts': psse_fixed_shunts,
