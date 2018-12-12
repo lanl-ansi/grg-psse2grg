@@ -423,6 +423,10 @@ def build_psse_case(grg_data, starting_point_map_id, switch_assignment_map_id):
         for k,v in vp2int.items():
             if v in number_update:
                 vp2int[k] = number_update[v]
+    else:
+        # make 1 based, becouse required by psse
+        for k,v in vp2int.items():
+            vp2int[k] = v+1
 
 
     buses_by_bid = {}
