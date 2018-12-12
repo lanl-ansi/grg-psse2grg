@@ -41,7 +41,7 @@ Changelog
 
 **staged**
 
-- nothing
+- made grg2psse more robust to optional grg data items
 
 
 **v0.0.1**

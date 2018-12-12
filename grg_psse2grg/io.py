@@ -352,8 +352,15 @@ def build_psse_case(grg_data, starting_point_map_id, switch_assignment_map_id):
 
     network = grg_data['network']
     starting_point_map = grg_data['mappings'][starting_point_map_id]
-    operations = grg_data['operation_constraints']
-    market = grg_data['market']
+
+    operations = None
+    if 'operation_constraints' in grg_data:
+        operations = grg_data['operation_constraints']
+
+    market = None
+    if 'market' in grg_data:
+        market = grg_data['market']
+
 
     if not network['per_unit']:
         print_err('network data not given in per unit')
@@ -431,9 +438,14 @@ def build_psse_case(grg_data, starting_point_map_id, switch_assignment_map_id):
     psse_owners = []
 
 
-    areas = {k:grp for k,grp in grg_data['groups'].items() if grp['type'] == 'area'}
-    zones = {k:grp for k,grp in grg_data['groups'].items() if grp['type'] == 'zone'}
-    owners = {k:grp for k,grp in grg_data['groups'].items() if grp['type'] == 'owner'}
+    if 'groups' in grg_data:
+        areas = {k:grp for k,grp in grg_data['groups'].items() if grp['type'] == 'area'}
+        zones = {k:grp for k,grp in grg_data['groups'].items() if grp['type'] == 'zone'}
+        owners = {k:grp for k,grp in grg_data['groups'].items() if grp['type'] == 'owner'}
+    else:
+        areas = {}
+        zones = {}
+        owners = {}
 
     area_index_lookup = {}
     area_id_lookup = {}
@@ -1297,11 +1309,11 @@ def build_cli_parser():
         epilog='''Please file bugs at...''',
     )
     parser.add_argument('file', help='the data file to operate on (.raw|.json)')
-    parser.add_argument('-spm', '--starting-point-mapping', help='a grg starting point mapping to be use as a basis for the psse case', default='starting_points')
-    parser.add_argument('-sam', '--switch-assignment-mapping', help='a grg switch mapping to be use as a basis for the psse case', default='breakers_assignment')
-    parser.add_argument('-i', '--idempotent', help='tests the translation of a given psse file is idempotent', action='store_true')
-    parser.add_argument('-os', '--omit-subtypes', help='ommits optional component subtypes when translating from psse to grg', default=False, action='store_true')
-    parser.add_argument('-sv', '--skip-validation', help='skips the grg validation step when translating from psse to grg', default=False, action='store_true')
+    parser.add_argument('-spm', '--starting-point-mapping', help='a grg starting point mapping to be use as a basis for the matpower case', default='starting_points')
+    parser.add_argument('-sam', '--switch-assignment-mapping', help='a grg switch mapping to be use as a basis for the matpower case', default='breakers_assignment')
+    parser.add_argument('-i', '--idempotent', help='tests the translation of a given matpower file is idempotent', action='store_true')
+    parser.add_argument('-os', '--omit-subtypes', help='ommits optional component subtypes when translating from matpower to grg', default=False, action='store_true')
+    parser.add_argument('-sv', '--skip-validation', help='skips the grg validation step when translating from matpower to grg', default=False, action='store_true')
 
     #parser.add_argument('--foo', help='foo help')
     version = __import__('grg_psse2grg').__version__
