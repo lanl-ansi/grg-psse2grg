@@ -4,5 +4,5 @@
 from grg_psse2grg import io
 from grg_pssedata import exception
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
