@@ -11,6 +11,9 @@ import warnings
 
 from grg_psse2grg.exception import PSSE2GRGWarning
 
+from grg_pssedata.exception import PSSEDataParsingError
+from grg_pssedata.exception import PSSEDataWarning
+
 from grg_pssedata.struct import quote_string
 
 from grg_pssedata.io import psse_table_terminus
@@ -50,6 +53,8 @@ from grg_psse2grg.struct import Case
 
 from grg_psse2grg.struct import grg_description_preamble
 
+
+
 from grg_grgdata.cmd import flatten_network
 import grg_grgdata.common as grg_common
 
@@ -86,11 +91,17 @@ def parse_psse_case_file(psse_file_name):
 
 
 def parse_psse_case_lines(lines):
-    assert(len(lines) > 3) # need at base values and record
+    if len(lines) < 3: # need at base values and record
+        raise PSSEDataParsingError('psse case has {} lines and at least 3 are required'.format(len(lines)))
 
     (ic, sbase, rev, xfrrat, nxfrat, basefrq), comment = parse_line(lines[0])
-    assert(int(ic) == 0) # validity checks may fail on "change data"
     print_err('case data: {} {} {} {} {} {}'.format(ic, sbase, rev, xfrrat, nxfrat, basefrq))
+
+    if int(ic) != 0: # validity checks may fail on "change data"
+        raise PSSEDataParsingError('ic value of {} given, only a value of 0 is supported'.format(ic))
+
+    if int(float(rev)) != 33:
+        warnings.warn('PSEE version {} given but only version 33 is supported, parser may not function correctly.'.format(rev.strip()), PSSEDataWarning)
 
     record1 = lines[1].strip('\n')
     record2 = lines[2].strip('\n')
@@ -204,7 +215,6 @@ def parse_psse_case_lines(lines):
 
             line_index += 5
 
-        #print(t)
         transformers.append(t)
         transformer_index += 1
     print_err('parsed {} transformers'.format(len(transformers)))
@@ -222,40 +232,89 @@ def parse_psse_case_lines(lines):
         line_index += 1
 
     #two terminal dc line data
+    ttdc_index = 0
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
+        line_parts_1, comment_1 = parse_line(lines[line_index])
+        line_parts_2, comment_2 = parse_line(lines[line_index+1])
+        line_parts_3, comment_3 = parse_line(lines[line_index+2])
+
+        parameters = TwoTerminalDCLineParameters(*line_parts_1)
+        rectifier = TwoTerminalDCLineRectifier(*line_parts_2)
+        inverter = TwoTerminalDCLineInverter(*line_parts_3)
+
+        tt_dc_lines.append(TwoTerminalDCLine(ttdc_index, parameters, rectifier, inverter))
+
+        ttdc_index += 1
+        line_index += 3
     print_err('parsed {} two terminal dc lines'.format(len(tt_dc_lines)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
         line_index += 1
 
     #vsc dc line data
+    vscdc_index = 0
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
-    print_err('parsed {} two terminal dc lines'.format(len(vsc_dc_lines)))
+        line_parts_1, comment_1 = parse_line(lines[line_index])
+        line_parts_2, comment_2 = parse_line(lines[line_index+1])
+        line_parts_3, comment_3 = parse_line(lines[line_index+2])
+
+        parameters = VSCDCLineParameters(*line_parts_1)
+        converter_1 = VSCDCLineConverter(*line_parts_2)
+        converter_2 = VSCDCLineConverter(*line_parts_3)
+
+        vsc_dc_lines.append(VSCDCLine(vscdc_index, parameters, converter_1, converter_2))
+
+        line_index += 3
+        vscdc_index += 1
+    print_err('parsed {} vsc dc lines'.format(len(vsc_dc_lines)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
         line_index += 1
 
-    trans_index_offset = line_index
+    #transformer impedence correction tables data
+    trans_offset_index = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
+        line_parts, comment = parse_line(lines[line_index])
+        transformer_corrections.append(TransformerImpedanceCorrection(line_index - trans_offset_index, *line_parts))
+        line_index += 1
     print_err('parsed {} transformer corrections'.format(len(transformer_corrections)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
         line_index += 1
 
     #multi-terminal dc line data
+    mtdc_count = 0
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
+        line_parts, comment = parse_line(lines[line_index])
+        parameters = MultiTerminalDCLineParameters(*line_parts)
+
+        nconv, ndcbs, ndcln = [], [], []
+        for i in range(0, parameters.nconv):
+            line_parts, comment = parse_line(lines[line_index + i + 1])
+            nconv.append(MultiTerminalDCLineConverter(*line_parts))
+
+        for i in range(parameters.nconv, parameters.ndcbs+parameters.nconv):
+            line_parts, comment = parse_line(lines[line_index + i + 1])
+            ndcbs.append(MultiTerminalDCLineDCBus(*line_parts))
+
+        for i in range(parameters.nconv + parameters.ndcbs, parameters.ndcln+parameters.nconv+parameters.ndcbs):
+            line_parts, comment = parse_line(lines[line_index + i + 1])
+            ndcln.append(MultiTerminalDCLineDCLink(*line_parts))
+
+        mt_dc_lines.append(MultiTerminalDCLine(mtdc_count, parameters, nconv, ndcbs, ndcln))
+        mtdc_count += 1
+        line_index += 1 + parameters.nconv + parameters.ndcbs + parameters.ndcln
     print_err('parsed {} multi-terminal dc lines'.format(len(mt_dc_lines)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
         line_index += 1
 
     #multi-section line grouping data
+    msline_index_offset = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
+        line_parts, comment = parse_line(lines[line_index])
+        line_groupings.append(MultiSectionLineGrouping(line_index - msline_index_offset, *line_parts))
+        line_index += 1
     print_err('parsed {} multi-section lines'.format(len(line_groupings)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
@@ -271,8 +330,11 @@ def parse_psse_case_lines(lines):
         line_index += 1
 
     # inter area transfer data
+    intarea_index_offset = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
+        line_parts, comment = parse_line(lines[line_index])
+        transfers.append(InterareaTransfer(line_index - intarea_index_offset, *line_parts))
+        line_index += 1
     print_err('parsed {} inter area transfers'.format(len(transfers)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
@@ -287,15 +349,19 @@ def parse_psse_case_lines(lines):
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
         line_index += 1
 
-    # facts device data block 
+    # facts device data block
+    facts_index = 0
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
+        line_parts, comment = parse_line(lines[line_index])
+        facts.append(FACTSDevice(facts_index, *line_parts))
+        facts_index += 1
+        line_index += 1
     print_err('parsed {} facts devices'.format(len(facts)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
         line_index += 1
 
-    # switched shunt data block 
+    # switched shunt data block
     swithced_shunt_index_offset = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
         line_parts, comment = parse_line(lines[line_index])
@@ -307,16 +373,23 @@ def parse_psse_case_lines(lines):
         line_index += 1
 
     # GNE device data
+    gne_count = 0
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
-    print_err('parsed {} generic network elements'.format(len(gnes)))
+        gne_count += 1
+        line_index += 1
+    if gne_count > 0:
+        warnings.warn('skipped {} lines of GNE data'.format(gne_count), PSSEDataWarning)
+        #print_err('parsed {} generic network elements'.format(len(gnes)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
         line_index += 1
 
     # induction machine data
+    indm_index_offset = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        assert(False) # implement me!
+        line_parts, comment = parse_line(lines[line_index])
+        induction_machines.append(InductionMachine(line_index - indm_index_offset, *line_parts))
+        line_index += 1
     print_err('parsed {} induction machines'.format(len(induction_machines)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
@@ -329,9 +402,9 @@ def parse_psse_case_lines(lines):
         line_index += 1
 
     case = Case(ic, sbase, rev, xfrrat, nxfrat, basefrq, record1, record2,
-        buses, loads, fixed_shunts, generators, branches, transformers, areas, 
-        tt_dc_lines, vsc_dc_lines, transformer_corrections, mt_dc_lines, 
-        line_groupings, zones, transfers, owners, facts, switched_shunts, 
+        buses, loads, fixed_shunts, generators, branches, transformers, areas,
+        tt_dc_lines, vsc_dc_lines, transformer_corrections, mt_dc_lines,
+        line_groupings, zones, transfers, owners, facts, switched_shunts,
         gnes, induction_machines)
 
     #print(case)
