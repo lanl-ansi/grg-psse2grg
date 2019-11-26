@@ -245,11 +245,14 @@ def parse_psse_case_lines(lines):
         line_parts_2, comment_2 = parse_line(lines[line_index+1], LineRequirements(line_index+1, 17, 17, "two terminal dc line"))
         line_parts_3, comment_3 = parse_line(lines[line_index+2], LineRequirements(line_index+2, 17, 17, "two terminal dc line"))
 
-        parameters = TwoTerminalDCLineParameters(*line_parts_1)
-        rectifier = TwoTerminalDCLineRectifier(*line_parts_2)
-        inverter = TwoTerminalDCLineInverter(*line_parts_3)
+        if ttdc_index == 0:
+            warnings.warn('skipping two terminal dc line data in PSSE file.', PSSE2GRGWarning)
 
-        tt_dc_lines.append(TwoTerminalDCLine(ttdc_index, parameters, rectifier, inverter))
+        # parameters = TwoTerminalDCLineParameters(*line_parts_1)
+        # rectifier = TwoTerminalDCLineRectifier(*line_parts_2)
+        # inverter = TwoTerminalDCLineInverter(*line_parts_3)
+
+        # tt_dc_lines.append(TwoTerminalDCLine(ttdc_index, parameters, rectifier, inverter))
 
         ttdc_index += 1
         line_index += 3
@@ -265,11 +268,14 @@ def parse_psse_case_lines(lines):
         line_parts_2, comment_2 = parse_line(lines[line_index+1], LineRequirements(line_index+1, 13, 15, "vsc dc line"))
         line_parts_3, comment_3 = parse_line(lines[line_index+2], LineRequirements(line_index+2, 13, 15, "vsc dc line"))
 
-        parameters = VSCDCLineParameters(*line_parts_1)
-        converter_1 = VSCDCLineConverter(*line_parts_2)
-        converter_2 = VSCDCLineConverter(*line_parts_3)
+        if vscdc_index == 0:
+            warnings.warn('skipping vsc dc line data in PSSE file.', PSSE2GRGWarning)
 
-        vsc_dc_lines.append(VSCDCLine(vscdc_index, parameters, converter_1, converter_2))
+        # parameters = VSCDCLineParameters(*line_parts_1)
+        # converter_1 = VSCDCLineConverter(*line_parts_2)
+        # converter_2 = VSCDCLineConverter(*line_parts_3)
+
+        # vsc_dc_lines.append(VSCDCLine(vscdc_index, parameters, converter_1, converter_2))
 
         line_index += 3
         vscdc_index += 1
@@ -282,7 +288,11 @@ def parse_psse_case_lines(lines):
     trans_offset_index = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
         line_parts, comment = parse_line(lines[line_index], LineRequirements(line_index, 1, 23, "transformer correction"))
-        transformer_corrections.append(TransformerImpedanceCorrection(line_index - trans_offset_index, *line_parts))
+
+        if trans_offset_index == line_index:
+            warnings.warn('skipping transformer impedance correction data in PSSE file.', PSSE2GRGWarning)
+
+        #transformer_corrections.append(TransformerImpedanceCorrection(line_index - trans_offset_index, *line_parts))
         line_index += 1
     print_err('parsed {} transformer corrections'.format(len(transformer_corrections)))
 
@@ -292,25 +302,31 @@ def parse_psse_case_lines(lines):
     #multi-terminal dc line data
     mtdc_count = 0
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
-        line_parts, comment = parse_line(lines[line_index], LineRequirements(line_index, 8, 8, "multi-terminal dc line"))
-        parameters = MultiTerminalDCLineParameters(*line_parts)
+        #line_parts, comment = parse_line(lines[line_index], LineRequirements(line_index, 8, 8, "multi-terminal dc line"))
+        line_parts, comment = parse_line(lines[line_index])
 
-        nconv, ndcbs, ndcln = [], [], []
-        for i in range(0, parameters.nconv):
-            line_parts, comment = parse_line(lines[line_index + i + 1], LineRequirements(line_index + i + 1, 16, 16, "multi-terminal dc line"))
-            nconv.append(MultiTerminalDCLineConverter(*line_parts))
+        if mtdc_count == 0:
+            warnings.warn('skipping mtdc line data in PSSE file.', PSSE2GRGWarning)
 
-        for i in range(parameters.nconv, parameters.ndcbs+parameters.nconv):
-            line_parts, comment = parse_line(lines[line_index + i + 1], LineRequirements(line_index + i + 1, 8, 8, "multi-terminal dc line"))
-            ndcbs.append(MultiTerminalDCLineDCBus(*line_parts))
+        # parameters = MultiTerminalDCLineParameters(*line_parts)
 
-        for i in range(parameters.nconv + parameters.ndcbs, parameters.ndcln+parameters.nconv+parameters.ndcbs):
-            line_parts, comment = parse_line(lines[line_index + i + 1], LineRequirements(line_index + i + 1, 6, 6, "multi-terminal dc line"))
-            ndcln.append(MultiTerminalDCLineDCLink(*line_parts))
+        # nconv, ndcbs, ndcln = [], [], []
+        # for i in range(0, parameters.nconv):
+        #     line_parts, comment = parse_line(lines[line_index + i + 1], LineRequirements(line_index + i + 1, 16, 16, "multi-terminal dc line"))
+        #     nconv.append(MultiTerminalDCLineConverter(*line_parts))
 
-        mt_dc_lines.append(MultiTerminalDCLine(mtdc_count, parameters, nconv, ndcbs, ndcln))
+        # for i in range(parameters.nconv, parameters.ndcbs+parameters.nconv):
+        #     line_parts, comment = parse_line(lines[line_index + i + 1], LineRequirements(line_index + i + 1, 8, 8, "multi-terminal dc line"))
+        #     ndcbs.append(MultiTerminalDCLineDCBus(*line_parts))
+
+        # for i in range(parameters.nconv + parameters.ndcbs, parameters.ndcln+parameters.nconv+parameters.ndcbs):
+        #     line_parts, comment = parse_line(lines[line_index + i + 1], LineRequirements(line_index + i + 1, 6, 6, "multi-terminal dc line"))
+        #     ndcln.append(MultiTerminalDCLineDCLink(*line_parts))
+
+        # mt_dc_lines.append(MultiTerminalDCLine(mtdc_count, parameters, nconv, ndcbs, ndcln))
         mtdc_count += 1
-        line_index += 1 + parameters.nconv + parameters.ndcbs + parameters.ndcln
+        line_index += 1
+        #line_index += 1 + parameters.nconv + parameters.ndcbs + parameters.ndcln
     print_err('parsed {} multi-terminal dc lines'.format(len(mt_dc_lines)))
 
     if parse_line(lines[line_index])[0][0].strip() != psse_record_terminus:
@@ -320,7 +336,9 @@ def parse_psse_case_lines(lines):
     msline_index_offset = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
         line_parts, comment = parse_line(lines[line_index], LineRequirements(line_index, 5, 5, "multi-section line"))
-        line_groupings.append(MultiSectionLineGrouping(line_index - msline_index_offset, *line_parts))
+        if msline_index_offset == line_index:
+            warnings.warn('skipping multi-section line grouping data in PSSE file.', PSSE2GRGWarning)
+        #line_groupings.append(MultiSectionLineGrouping(line_index - msline_index_offset, *line_parts))
         line_index += 1
     print_err('parsed {} multi-section lines'.format(len(line_groupings)))
 
@@ -340,7 +358,9 @@ def parse_psse_case_lines(lines):
     intarea_index_offset = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
         line_parts, comment = parse_line(lines[line_index], LineRequirements(line_index, 4, 4, "inter-area transfer"))
-        transfers.append(InterareaTransfer(line_index - intarea_index_offset, *line_parts))
+        if intarea_index_offset == line_index:
+            warnings.warn('skipping inter area transfer data in PSSE file.', PSSE2GRGWarning)
+        #transfers.append(InterareaTransfer(line_index - intarea_index_offset, *line_parts))
         line_index += 1
     print_err('parsed {} inter-area transfers'.format(len(transfers)))
 
@@ -360,7 +380,9 @@ def parse_psse_case_lines(lines):
     facts_index = 0
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
         line_parts, comment = parse_line(lines[line_index], LineRequirements(line_index, 19, 21, "facts device"))
-        facts.append(FACTSDevice(facts_index, *line_parts))
+        if facts_index == line_index:
+            warnings.warn('skipping FACTS device data in PSSE file.', PSSE2GRGWarning)
+        #facts.append(FACTSDevice(facts_index, *line_parts))
         facts_index += 1
         line_index += 1
     print_err('parsed {} facts devices'.format(len(facts)))
@@ -395,7 +417,9 @@ def parse_psse_case_lines(lines):
     indm_index_offset = line_index
     while parse_line(lines[line_index])[0][0].strip() not in psse_terminuses:
         line_parts, comment = parse_line(lines[line_index], LineRequirements(line_index, 34, 34, "induction machine"))
-        induction_machines.append(InductionMachine(line_index - indm_index_offset, *line_parts))
+        if indm_index_offset == line_index:
+            warnings.warn('skipping induction machine data in PSSE file.', PSSE2GRGWarning)
+        #induction_machines.append(InductionMachine(line_index - indm_index_offset, *line_parts))
         line_index += 1
     print_err('parsed {} induction machines'.format(len(induction_machines)))
 

@@ -896,6 +896,7 @@ class SwitchedShunt(grg_pssedata.struct.SwitchedShunt):
 
         #TODO correctly implement general form of this
         assert(self.n1 == 1)
+
         if self.b1 <= 0:
             susceptance = grg_common.build_set_variable([self.b1/base_mva, 0.0])
         else:
